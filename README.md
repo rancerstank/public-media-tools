@@ -1,68 +1,117 @@
-# media-tools
+# Photo Tools — Instagram Image Formatter version 1
+Desktop utility for batch photo optimization, aspect ratio compliance, and Instagram-ready exports.
 
-Skateboarding photo cataloging, facial & image recognition, contest database, and broadcast tooling for pair programming on `stein15`.
+Available as a single-file standalone script (`ig_size_formatter_v1.py`).
+
+This program places a hidden file in each scanned folder location to build a processing manifest of each photo. This file can be deleted and processing history will be reset. You can check "No Manifest" if you don't what this file created.  
 
 ---
 
 ## 1. Overview & Key Capabilities
 
-1. **Skate Photo Recognition & Metadata Catalog (`skaterDB_tools.database` / `skaterDB_tools.vision_pipeline`)**:
-   - Maintains unique, permanent **Skater IDs** (`SK8-0001`, `SK8-AUTO-0012`).
-   - Associates names, nicknames, aliases, rider stance (**Regular** vs. **Goofy**), hometowns, Instagram handles, and sponsors with photo assets.
-   - Multimodal Gemini Vision Analyzer (`gemini-2.5-flash` / `gemini-3.7-flash` via `google-genai`): detects faces, rider stance (`Regular`/`Goofy`/`Switch`/`Nollie`/`Fakie`), trick performed, obstacle type, apparel, deck graphics, and sponsor text.
-   - All AI suggestions are flagged with `confidence` (0.0–1.0) and marked for 1-click human verification.
+Instagram requires specific aspect ratios for timeline posts and stories to prevent awkward cropping:
+- **1:1** (Square) — 1080 × 1080 px
+- **4:5** (Portrait) — 1080 × 1350 px *(recommended for portrait posts)*
+- **5:4** (Landscape) — 1350 × 1080 px *(recommended for landscape posts)*
+- **9:16** (Stories / Reels) — 1080 × 1920 px
+- **16:9** (Widescreen Landscape) — 1920 × 1080 px
 
-2. **Multi-Source Contest & League Ingestion (`skaterDB_tools.scrapers`)**:
-   - **Skatepark of Tampa (SPoT)** (`skaterDB_tools.scrapers.spot`): Dynamic crawler and placement parser for all pages of SPoT contest results (Tampa Pro, Tampa Am, Damn Am, and local contests from 1993 to 2026).
-   - **Street League Skateboarding (SLS)** (`skaterDB_tools.scrapers.sls`): Historical Super Crown champions, tour stop placements, and season standings.
-   - **Professional Skateboarding League (PSL)** (`skaterDB_tools.scrapers.psl`): Live Convex API integration for teams (Wolverines, SHS, Tropics, etc.), full player rosters, and in-depth performance statistics (offensive/defensive efficiency, fakie, switch).
-   - **Pre-Compiled Seed Dataset (`skaterDB_tools.seed_data`)**: Offline-ready starter database containing verified pro skaters, historical Tampa Pro winners, and league rosters.
-
-3. **Safe Merge Engine with 1-Click Rollback (`skaterDB_tools.skater_service`)**:
-   - Merges duplicate or provisional profiles (`SK8-AUTO-xxxx` into `SK8-xxxx`) by re-linking all photo appearances and contest placements, aggregating aliases and sponsors, and marking the duplicate as `merged`.
-   - Records an atomic snapshot before modification into `audit_log`, allowing any merge to be **undone with 1 click** from the GUI or CLI (`unmerge <log_id>`).
-
-4. **Multi-Criteria Search & Photo Matcher (`skaterDB_tools.search_service`)**:
-   - Filter and match photos by **Skater**, **Contest** (e.g. *Tampa Pro 2024–2026*), **PSL Team**, **Trick Name**, **Stance** (Regular vs. Goofy), and **Event Folder**.
-
-5. **Desktop Review GUI & Standalone Variant (`skaterDB_tools.gui` / `skaterDB_tools.standalone`)**:
-   - Tkinter GUI adhering to `GEMINI.md` worker thread and queue draining standards.
-   - Single-file standalone executable variant (`skaterDB_tools/standalone/skater_catalog_standalone.py`) with PyInstaller `sys.frozen` path anchoring.
-
-6. **Google Automation (`google_automation`)**:
-   - Google Apps Script (`skate_photo_automation.js`) to scan Google Drive root folder `17XXXbo0XG3uB55yTXxpV8YvaGrNpYi91`, mirror the catalog to Google Sheets, and tag Google Drive file descriptions with Skater IDs.
+The **Instagram Image Formatter** takes any photo and fits it cleanly into the desired Instagram canvas using customizable background padding (letterbox or pillarbox bars), uniform border frames, solid colors, or tiled image textures. Original source photos are never modified.
 
 ---
 
-## 2. Sub-Projects & Tools
+## 2. Feature Highlights
 
-### `skaterDB/`
-The core skateboarding photo recognition, facial/image indexing, and contest history database. See [`skaterDB/README.md`](skaterDB/README.md) for full architecture and documentation.
+### Aspect Ratio Padding & Auto-Mode
+- **Pre-set Ratios**: `1:1`, `4:5`, `5:4`, `9:16`, and `16:9`.
+- **Auto (5:4 / 4:5)**: Intelligently selects `5:4` for landscape images and `4:5` for portrait images.
+- **Two Border Modes**:
+  - **Bars (letterbox/pillarbox)**: Expands only the narrower dimension to reach the exact target ratio.
+  - **Full Border + Bars**: Applies a uniform percentage border (0% to 15%) around all four sides, then adds ratio padding bars.
+- **Smart Thickness Slider**: Automatically disables and grays out when *Bars* mode is active, re-enabling only when *Full Border + Bars* is selected.
 
-```powershell
-# Navigate into skaterDB
-cd skaterDB
+### Background Customization
+- **Solid Colors**: Custom Tkinter color picker with 1-click **W** (White `#ffffff`) and **B** (Black `#000000`) presets.
+- **Texture Fills**: Load any image file (wood grain, canvas, paper texture) to use as background fill with **Tile** or **Stretch** modes.
 
-# Run CLI commands
-python scripts/skate_catalog_cli.py list-skaters
-python scripts/skate_catalog_cli.py search --skater "Nyjah Huston"
+### 90° Image Rotation
+- Rotate images 90° Clockwise or Counter-Clockwise directly from the UI or via right-click context menu.
+- Real-time recalculation of effective dimensions, aspect ratio, orientation label, and live preview.
 
-# Launch desktop GUI
-python -m skaterDB_tools.gui.app
+### Extended Multi-Selection & Bulk Actions
+- Select multiple images using `Shift + Click` or `Ctrl + Click`.
+- The preview panel automatically swaps into a multi-selection table displaying dimensions and aspect ratios of all highlighted files.
+- Apply rotation, target ratio, border mode, color, texture, or export format to all selected images in bulk.
+
+### Interactive Table View & Column Sorting
+- Displays **Status**, **Filename**, **Dimensions**, **Ratio**, **Current IG**, **Orientation**, and **Subfolder**.
+- Click any column header to sort alphabetically, numerically by pixel resolution, or by status priority. Ascending and descending sort indicators (`▲` / `▼`) appear in header labels.
+
+### Export History & Status Tracking
+- **Persistent Hidden Manifests (`.ig_manifest.json`)**: Automatically created per folder and subfolder. On Windows, files receive the hidden attribute (`0x02`) and are safely unhidden during updates.
+- **1-Click History Reset**: To reset processing history and clear all cached recipes for any folder, simply delete its `.ig_manifest.json` file.
+- **Optional No Manifest Mode**: Check the **No Manifest** checkbox in the top toolbar to bypass reading from and writing to `.ig_manifest.json` entirely. When enabled, images are formatted and exported cleanly without creating any manifest files on disk.
+- **Running Recipe History**: Manifest stores the latest export recipe and up to 50 iterations of history per photo.
+- **Dedicated Status Column with Row Tags**:
+  - `✓ Processed` (Green): Image has been exported and recorded in the folder manifest.
+  - `Ready` (Blue): Image already matches an Instagram aspect ratio.
+  - `Needs conversion` (Red): Aspect ratio does not match standard Instagram dimensions.
+- **Decoupled Output Check & Real-Time Disk Indicators**:
+  - The primary table status is decoupled from physical disk presence: deleting output files from disk does not invalidate or reset the `✓ Processed` status because past recipes are preserved and can be recalled and re-exported with 1 click at any time.
+  - **Single Photo Details Indicator**: A helper note directly beneath the History dropdown shows `✓ Output file on disk` (green) or `⚠ Output file not found on disk — select to re-export` (red).
+  - **History Combobox Tagging**: Past recipes in the History dropdown automatically append ` • [Missing on disk]` if the physical file cannot be located on disk (e.g. `2026-09-20 11:45 • 4:5 • Bars • White • [Missing on disk]`).
+  - **Hover Tooltips**: Hover over any table row to see a dark-themed card showing the export timestamp, target ratio, border mode, thickness, fill, format, quality, output file name, and disk status (`[On disk]` or `[Missing on disk — ready to re-export]`).
+- **Interactive History Dropdown**: In the single-image preview details panel, the **History** field is an interactive dropdown listing all prior export recipes for the photo in reverse-chronological order (newest to oldest):
+  `Timestamp • Target Ratio • Border Mode • Fill` (e.g. `2026-09-20 11:45 • 4:5 • Bars • White`). Selecting any past export recipe immediately restores all configuration settings (target ratio, border mode, border percentage, fill color or texture, output format, quality slider, suffix, and rotation) and updates the live preview canvas.
+- **3-Way Filtering**: Toggle between **Needs Processing** (unprocessed non-standard photos), **Processed** (all exported files), and **Show All**.
+- **3-Way Overwrite Confirmation**: When re-processing files whose outputs exist on disk, prompts **Yes** (overwrite & append history), **No** (skip existing), or **Cancel** (abort).
+
+### Non-Destructive Export & Flexible Destinations
+- Configurable filename suffix (default: `_ig`).
+- Format conversion: **JPEG** (with quality slider 1–100), **PNG**, **TIFF**, **BMP**, and **WEBP**.
+- Destination folder routing: "Same as source image" or custom export folder with full subfolder structure preservation.
+
+---
+
+## 3. Requirements
+
+- **Python**: Version 3.9 or newer.
+- **Pillow**: Python Imaging Library (`pip install Pillow`).
+  - The standalone script includes an automatic prerequisite check on startup that offers to install Pillow if missing.
+
+---
+
+## 4. Quick Start
+
+### Running the Standalone Script (Recommended)
+Download `ig_size_formatter.py` and run:
+
+```bash
+python ig_size_formatter.py
 ```
 
 ---
 
-## 3. Database Schema (`data/skate_catalog.db`)
+## 5. Issues & Feature Backlog
 
-- **`skaters`**: `skater_id` (PK), `name`, `first_name`, `last_name`, `nickname`, `stance`, `hometown`, `nationality`, `instagram`, `sponsors`, `psl_team_name`, `tampa_pro_wins`, `tampa_am_wins`, `sls_wins`, `total_podiums`, `status` (`verified`, `provisional`, `unidentified`, `discarded`, `merged`), `merged_into_id`, `notes`, timestamps.
-- **`tricks`**: `trick_name` (PK), `category` (`flip`, `grind`, `slide`, `grab`, `aerial`, `plant`, `transition`, `learned`), `aliases` (JSON array), `description`, `created_at`.
-- **`shops`**: `shop_id` (PK), `name`, `aliases` (JSON), `address`, `city`, `state`, `country`, `zip_code`, `phone`, `email`, `website`, `instagram`, `google_maps_url`, `logo_url`, `description`, `notes`, timestamps.
-- **`sponsors`**: `sponsor_id` (PK), `name`, `category` (`shoe`, `truck`, `wheel`, `bearing`, `grip`, `clothing`, `energy`, `shop`, `general`), `aliases` (JSON), `parent_company`, `linked_shop_id` (FK -> shops.shop_id), `website`, `instagram`, `logo_url`, `description`, `notes`, timestamps.
-- **`locations`**: `location_id` (PK), `name`, `short_name`, `city`, `state`, `country`, `is_indoor`, `aliases` (JSON), `description`, `created_at`.
-- **`contest_results`**: `result_id` (PK), `skater_id` (FK), `organization`, `contest_name`, `contest_year`, `division`, `place`, `score`, `source_url`.
-- **`league_stats`**: `stat_id` (PK), `skater_id` (FK), `league`, `season`, `team_name`, `stats_json`.
-- **`photos`**: `photo_id` (PK), `drive_file_id` (UNIQUE), `drive_file_name`, `drive_folder_path`, `location_id`, `location_name`, `web_view_link`, `thumbnail_link`, `date_taken`, `processed_status`, `detected_count`.
-- **`appearances`**: `appearance_id` (PK), `photo_id` (FK), `skater_id` (FK), `bounding_box`, `confidence`, `verified_by_user`, `stance_observed`, `trick_name`, `obstacle_type`, `visual_attributes`, `notes`.
-- **`articles`**: `article_id` (PK), `source`, `title`, `author`, `byline_raw`, `url` (UNIQUE), `published_date`, `location_name`, `skaters_mentioned`, `tricks_mentioned`, `image_urls`, `content_summary`.
-- **`audit_log`**: `log_id` (PK), `action_type`, `source_id`, `target_id`, `photo_id`, `details_json` (full state snapshot for undo), `timestamp`.
+### Fixes & Improvements
+- [x] Auto (5:4 / 4:5) dynamic aspect ratio mode based on image orientation.
+- [x] Extended multi-selection with detail panel swap and bulk application.
+- [x] Clickable column header sorting for all table fields.
+- [x] 90° CW and CCW rotation with live preview and orientation updates.
+- [x] Prerequisite check with auto-install for Pillow on startup.
+- [x] Compact progress bar with expanded status readout.
+- [x] Individual format filter checkboxes (`JPG/JPEG`, `PNG`, `TIFF`, `WEBP`, `BMP`).
+- [x] Thickness slider automatically disabled when Full Border is not active.
+- [x] Hidden `.ig_manifest.json` tracking persistent export recipes and history across scans.
+- [x] Status column with color-coded tags and hover recipe tooltips.
+- [x] Overwrite confirmation dialog (Yes / No / Cancel).
+- [x] Optional "No Manifest" checkbox to bypass reading/writing `.ig_manifest.json`.
+- [x] Interactive History dropdown restoring past export settings and live preview on selection.
+- [x] Decoupled disk presence checking from primary table status with real-time `[Missing on disk]` combobox and tooltip indicators.
+
+### Planned Features
+- [ ] Drag-and-drop support for folders and individual photo files into the GUI window.
+- [ ] Preset profiles for quick 1-click recipe selection (e.g., "Clean White 4:5", "Framed Black 1:1").
+- [ ] Optional automated EXIF metadata preservation across exports.
+
