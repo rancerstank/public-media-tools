@@ -1,6 +1,8 @@
 # Photo Tools — Instagram Image Formatter version 1
 Desktop utility for batch photo optimization, aspect ratio compliance, and Instagram-ready exports.
 
+<img width="752" height="485" alt="2026-09-20 12_43_20-Instagram Image Formatter" src="https://github.com/user-attachments/assets/5a0063ce-0dae-4e53-b02f-c6207d888353" />
+
 Available as a single-file standalone script (`ig_size_formatter_v1.py`).
 
 This program places a hidden file in each scanned folder location to build a processing manifest of each photo. This file can be deleted and processing history will be reset. You can check "No Manifest" if you don't what this file created.  
